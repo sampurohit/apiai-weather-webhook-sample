@@ -26,8 +26,9 @@ def webhook():
     print("Request:")
     print(json.dumps(req, indent=4))
 
-    res = processRequest(req)
-
+    #res = processRequest(req)
+    res = urlopen("https://api.truelocal.com.au/rest/application.properties?passToken=blUwenhxc2w5TQ==").read()
+        
     res = json.dumps(res, indent=4)
     # print(res)
     r = make_response(res)
@@ -35,16 +36,7 @@ def webhook():
     return r
 
 
-def processRequest(req):
-    if req.get("result").get("action") != "yahooWeatherForecast":
-        return {}
-    baseurl = "https://api.truelocal.com.au/rest/application.properties?"
-    if yql_query is None:
-        return {}
-    yql_url = baseurl + "passToken=blUwenhxc2w5TQ=="
-    result = urlopen(yql_url).read()
-    data = json.loads(result)
-    return data
+
 
 
 if __name__ == '__main__':
