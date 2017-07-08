@@ -22,21 +22,15 @@ app = Flask(__name__)
 @app.route('/webhook', methods=['POST'])
 def webhook():
     req = request.get_json(silent=True, force=True)
-
-    print("Request:")
-    print(json.dumps(req, indent=4))
-
-    #res = processRequest(req)
-    res = urlopen("https://api.truelocal.com.au/rest/application.properties?passToken=blUwenhxc2w5TQ==").read()
-        
-    res = json.dumps(res, indent=4)
-    # print(res)
+    
+    result = req.get("result")
+    parameters = result.get("parameters")
+    city = parameters.get("geo-city")
+    
+    res = "Chutney Chang at 126 pitt street" + city
     r = make_response(res)
     r.headers['Content-Type'] = 'application/json'
     return r
-
-
-
 
 
 if __name__ == '__main__':
