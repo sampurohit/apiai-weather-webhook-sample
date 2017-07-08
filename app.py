@@ -21,48 +21,82 @@ app = Flask(__name__)
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    res = "{
-  \"id\": \"6ebc9621-0f96-4572-a923-d8477adb5bee\",
-  \"timestamp\": \"2017-07-08T03:33:02.423Z\",
-  \"lang\": \"en\",
-  \"result\": {
-    \"source\": \"agent\",
-    \"resolvedQuery\": \"weather in sunnyvale\",
-    \"action\": \"yahooWeatherForecast\",
-    \"actionIncomplete\": false,
-    \"parameters\": {
-      \"geo-city\": \"Sunnyvale\"
-    },
-    \"contexts\": [],
-    \"metadata\": {
-      \"intentId\": \"3f980d91-c152-40f9-8ed7-d863fb84f4be\",
-      \"webhookUsed\": \"true\",
-      \"webhookForSlotFillingUsed\": \"false\",
-      \"webhookResponseTime\": 278,
-      \"intentName\": \"weather-intent\"
-    },
-    \"fulfillment\": {
-      \"speech\": \"Today in Sunnyvale: Sunny, the temperature is 79 F\",
-      \"source\": \"apiai-weather-webhook-sample\",
-      \"displayText\": \"Today in Sunnyvale: Sunny, the temperature is 79 F\",
-      \"messages\": [
-        {
-          \"type\": 0,
-          \"speech\": \"Today in Sunnyvale: Sunny, the temperature is 79 F\"
-        }
-      ]
-    },
-    \"score\": 1
-  },
-  \"status\": {
-    \"code\": 200,
-    \"errorType\": \"success\"
-  },
-  \"sessionId\": \"7d0ac25a-bb87-4b05-a2ff-65df5424982a\"
-}"
+    req = request.get_json(silent=True, force=True)
+
+    print("Request:")
+    print(json.dumps(req, indent=4))
+
+    res = processRequest(req)
+
+    res = json.dumps(res, indent=4)
+    # print(res)
     r = make_response(res)
     r.headers['Content-Type'] = 'application/json'
     return r
+
+
+def processRequest(req):
+    if req.get("result").get("action") != "yahooWeatherForecast":
+        return {}
+    baseurl = "https://query.yahooapis.com/v1/public/yql?"
+    yql_query = makeYqlQuery(req)
+    if yql_query is None:
+        return {}
+    yql_url = baseurl + urlencode({'q': yql_query}) + "&format=json"
+    result = urlopen(yql_url).read()
+    data = json.loads(result)
+    res = makeWebhookResult(data)
+    return res
+
+
+def makeYqlQuery(req):
+    result = req.get("result")
+    parameters = result.get("parameters")
+    city = parameters.get("geo-city")
+    if city is None:
+        return None
+
+    return "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text='" + city + "')"
+
+
+def makeWebhookResult(data):
+    query = data.get('query')
+    if query is None:
+        return {}
+
+    result = query.get('results')
+    if result is None:
+        return {}
+
+    channel = result.get('channel')
+    if channel is None:
+        return {}
+
+    item = channel.get('item')
+    location = channel.get('location')
+    units = channel.get('units')
+    if (location is None) or (item is None) or (units is None):
+        return {}
+
+    condition = item.get('condition')
+    if condition is None:
+        return {}
+
+    # print(json.dumps(item, indent=4))
+
+    speech = "Today in " + location.get('city') + ": " + condition.get('text') + \
+             ", the temperature is " + condition.get('temp') + " " + units.get('temperature')
+
+    print("Response:")
+    print(speech)
+
+    return {
+        "speech": speech,
+        "displayText": speech,
+        # "data": data,
+        # "contextOut": [],
+        "source": "apiai-weather-webhook-sample"
+    }
 
 
 if __name__ == '__main__':
