@@ -21,13 +21,7 @@ app = Flask(__name__)
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    req = request.get_json(silent=True, force=True)
-    
-    result = req.get("result")
-    parameters = result.get("parameters")
-    city = parameters.get("geo-city")
-    
-    res = "Chutney Chang at 126 pitt street" + city
+    res = "Chutney Chang at 126 pitt street"
     r = make_response(res)
     r.headers['Content-Type'] = 'application/json'
     return r
